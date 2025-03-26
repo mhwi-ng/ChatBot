@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUE chatbot</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background: linear-gradient(135deg, #6e7cfc, #87a7f7);
+            color: #333;
+        }
+
+        h1 {
+            font-size: 50px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #FF6F61, #6a5acd, #ff6347, #4CAF50);
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.4);
+            animation: textGlow 1.5s infinite alternate;
+        }
+
+        /* Animation for glowing effect */
+        @keyframes textGlow {
+            0% {
+                text-shadow: 0 0 10px #ff6f61, 0 0 20px #ff6f61, 0 0 30px #ff6f61, 0 0 40px #ff6f61;
+            }
+
+            100% {
+                text-shadow: 0 0 20px #ff6f61, 0 0 30px #ff6f61, 0 0 40px #ff6f61, 0 0 50px #ff6f61;
+            }
+        }
+
+        input[type="text"] {
+            width: 320px;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 20px;
+            border: 1px solid #ffffff;
+            outline: none;
+            background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease-in-out;
+        }
+
+        input[type="text"]:focus {
+            background-color: white;
+            border-color: #4CAF50;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+        }
+
+        button {
+            padding: 14px 28px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 30px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-3px);
+        }
+
+        .voice-button {
+            padding: 14px 28px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 30px;
+            background-color: #FF5722;
+            color: white;
+            border: none;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .voice-button:hover {
+            background-color: #e64a19;
+            transform: translateY(-3px);
+        }
+
+        .waiting {
+            font-weight: normal;
+            font-size: 20px;
+            color: #ffffff;
+            display: none;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .chat-container {
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 20px;
+            background-color: #fff;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .messages {
+            text-align: left;
+            max-height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+
+        .message {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .user-message {
+            color: #4CAF50;
+            font-weight: bold;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .assistant-message {
+            color: #FF5722;
+            font-weight: normal;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .message:before {
+            content: "💬";
+            margin-right: 8px;
+        }
+
+        .input-container {
+            margin-top: 20px;
+        }
+
+        .input-container input,
+        .input-container button {
+            margin-bottom: 15px;
+        }
+
+        .answer {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .message-container {
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 20px;
+        }
+
+        .message-container .user-message {
+            font-size: 18px;
+            color: #00796b;
+        }
+
+        .message-container .assistant-message {
+            font-size: 18px;
+            color: #d32f2f;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="chat-container">
+        <h1>DUE chatbot</h1>
+        <div class="messages" id="messages"></div>
+        <div class="input-container" id="input-container">
+            <input type="text" id="question" placeholder="Nhập câu hỏi ở đây" />
+            <br>
+            <button id="sendBtn" onclick="askQuestion()">Gửi câu hỏi</button>
+            <button class="voice-button" onclick="startListening()">🎤 Nhận dạng giọng nói</button>
+        </div>
+        <div class="waiting" id="waiting">Đang chờ câu trả lời...</div>
+        <div class="answer" id="answer"></div>
+    </div>
+
+    <script>
+        let messages = [];
+        let isWaitingForAnswer = false;
+
+        // Lắng nghe sự kiện nhấn phím Enter
+        document.getElementById('question').addEventListener('keypress', function (event) {
+            if (event.key === 'Enter' && !isWaitingForAnswer) {
+                askQuestion(); // Tự động gửi câu hỏi khi nhấn Enter
+            }
+        });
+
+        async function askQuestion() {
+            const question = document.getElementById('question').value;
+            if (question === "") {
+                alert("Vui lòng nhập câu hỏi!");
+                return;
+            }
+
+            // Hide input container while waiting for answer
+            document.getElementById('input-container').style.display = "none";
+
+            // Disable button while waiting for answer
+            isWaitingForAnswer = true;
+            document.getElementById('sendBtn').disabled = true;
+
+            // Show loading dots
+            document.getElementById('waiting').style.display = "block";
+
+            // Add user message
+            messages.push({ role: "user", content: question });
+
+            // Clear the input field
+            document.getElementById('question').value = "";
+
+            // Update messages
+            updateMessages();
+
+            try {
+                const response = await fetch("http://localhost:8000/chat/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ "user_question": question })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const assistantReply = data.answer;
+
+                    // Add assistant reply message
+                    messages.push({ role: "assistant", content: assistantReply });
+
+                    // Update messages with typing effect
+                    updateMessages();
+                    typeEffect(assistantReply);
+                    speak(assistantReply);  // Read the assistant's reply
+                } else {
+                    document.getElementById('answer').textContent = "Có lỗi xảy ra khi kết nối với API.";
+                }
+            } catch (error) {
+                document.getElementById('answer').textContent = "Đã xảy ra lỗi khi kết nối với server.";
+            } finally {
+                // Enable button after receiving the answer
+                isWaitingForAnswer = false;
+                document.getElementById('sendBtn').disabled = false;
+
+                // Hide loading dots
+                document.getElementById('waiting').style.display = "none";
+
+                // Show input container again after receiving the answer
+                document.getElementById('input-container').style.display = "block";
+            }
+        }
+
+        function updateMessages() {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = "";  // Clear existing messages
+
+            // Append each message to the container
+            messages.forEach(msg => {
+                const messageDiv = document.createElement("div");
+                messageDiv.classList.add("message");
+
+                if (msg.role === "user") {
+                    messageDiv.classList.add("user-message");
+                    messageDiv.textContent = `👤: ${msg.content}`;
+                } else if (msg.role === "assistant") {
+                    messageDiv.classList.add("assistant-message");
+                    messageDiv.textContent = `🤖: ${msg.content}`;
+                }
+
+                messagesDiv.appendChild(messageDiv);
+            });
+
+            // Scroll to bottom
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Function to create typing effect
+        function typeEffect(text) {
+            const answerDiv = document.getElementById('answer');
+            let i = 0;
+            answerDiv.textContent = "";
+            let typingInterval = setInterval(() => {
+                if (i < text.length) {
+                    answerDiv.textContent += text.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(typingInterval);
+                }
+            }, 50); // Adjust typing speed here
+        }
+
+        // Function to speak the assistant's reply
+        function speak(text) {
+            const speech = new SpeechSynthesisUtterance(text);
+            speech.lang = 'vi-VN';  // Set language to Vietnamese
+            window.speechSynthesis.speak(speech);
+        }
+
+        // Function to start voice recognition
+        function startListening() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'vi-VN';  // Set language to Vietnamese
+            recognition.start();
+
+            recognition.onresult = function (event) {
+                const voiceInput = event.results[0][0].transcript;
+                document.getElementById('question').value = voiceInput;
+                askQuestion();  // Automatically submit the question after voice input
+            };
+
+            recognition.onerror = function (event) {
+                alert("Đã xảy ra lỗi trong khi nhận dạng giọng nói.");
+            };
+        }
+    </script>
+
+</body>
+
+</html>
